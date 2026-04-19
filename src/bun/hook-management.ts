@@ -103,10 +103,12 @@ function quoteCommandPath(path: string) {
 }
 
 function buildWindowsManagedHookLauncher(paths: LoopndrollPaths) {
+  const bunExecutablePath = process.execPath.replaceAll('"', '""');
+
   return [
     "@echo off",
     "setlocal",
-    `bun "%~dp0${basename(paths.managedHookScriptPath)}" %*`,
+    `"${bunExecutablePath}" "%~dp0${basename(paths.managedHookScriptPath)}" %*`,
     "",
   ].join("\r\n");
 }

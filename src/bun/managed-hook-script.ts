@@ -64,5 +64,27 @@ const appMigrations = ${JSON.stringify(appMigrations)};
     .replace(
       'spawnSync("/bin/sh", ["-lc", command], {',
       "spawnSync(completionCheckRunner.command, [...completionCheckRunner.args, command], {",
-    );
+    )
+    .replace(
+      `function syncInheritedSessionActiveSinceForGlobalPresetChange(
+  db: Database,
+  preset: LoopPreset | null,
+  timestamp = nowIsoString(),
+) {`,
+      `function syncInheritedSessionActiveSinceForGlobalPresetChange(
+  db,
+  preset,
+  timestamp = nowIsoString(),
+) {`,
+    )
+    .replace(
+      `function getTelegramChatDisplayName(chat: {
+  title?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  username?: string | null;
+}) {`,
+      `function getTelegramChatDisplayName(chat) {`,
+    )
+    .replace("(part): part is string =>", "(part) =>");
 }
