@@ -43,9 +43,6 @@ Loopndroll is a desktop app that keeps Codex chats moving after Codex stops. The
 
 ## Dev Logs
 
-- SQLite app state lives under the platform app-data directory:
-  macOS: `~/Library/Application Support/loopndroll/app.db`
-  Windows: `%LocalAppData%\loopndroll\app.db`
-  Linux: `${XDG_DATA_HOME:-~/.local/share}/loopndroll/app.db`
+- SQLite app state lives under `~/.codex/loopndroll/app.db`
 - Optional hook debug log lives alongside the database in `logs/hooks-debug.jsonl`
 - Managed Codex hook/config files touched by the app: `~/.codex/hooks.json` and `~/.codex/config.toml`

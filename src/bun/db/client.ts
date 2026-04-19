@@ -1,7 +1,8 @@
-import { mkdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
+import { getLegacyLoopndrollAppDirectoryPath } from "../loopndroll-core";
 import { applyAppMigrations } from "./migrations";
 import * as schema from "./schema";
 
@@ -20,6 +21,33 @@ type LoopndrollDatabase = {
 
 let cachedDatabase: LoopndrollDatabase | null = null;
 
+function migrateLegacyDatabase(databasePath: string) {
+  const targetDirectoryPath = dirname(databasePath);
+  const legacyDirectoryPath = getLegacyLoopndrollAppDirectoryPath();
+
+  if (legacyDirectoryPath === targetDirectoryPath || existsSync(databasePath)) {
+    return;
+  }
+
+  const legacyDatabasePath = `${legacyDirectoryPath}\\app.db`;
+  if (!existsSync(legacyDatabasePath)) {
+    return;
+  }
+
+  mkdirSync(targetDirectoryPath, { recursive: true });
+
+  for (const suffix of ["", "-shm", "-wal"]) {
+    const sourcePath = `${legacyDatabasePath}${suffix}`;
+    const targetPath = `${databasePath}${suffix}`;
+
+    if (!existsSync(sourcePath) || existsSync(targetPath)) {
+      continue;
+    }
+
+    copyFileSync(sourcePath, targetPath);
+  }
+}
+
 function configureDatabase(client: Database) {
   for (const statement of SQLITE_PRAGMA_STATEMENTS) {
     client.exec(statement);
@@ -31,6 +59,7 @@ export function getLoopndrollDatabase(databasePath: string) {
     return cachedDatabase;
   }
 
+  migrateLegacyDatabase(databasePath);
   mkdirSync(dirname(databasePath), { recursive: true });
 
   const client = new Database(databasePath, { create: true });

@@ -135,7 +135,8 @@ If you were looking for a Slack token: this app does not need one for Slack noti
 
 ## Platform notes
 
-- Loopndroll stores app data in the platform app-data directory, such as `~/Library/Application Support/loopndroll` on macOS and `%LocalAppData%\loopndroll` on Windows.
+- Loopndroll stores its runtime state under `~/.codex/loopndroll` so the managed hook process can access the same files as Codex across platforms.
+- Existing installs automatically migrate the previous app database from the old platform app-data directory into `~/.codex/loopndroll` when needed.
 - Completion checks run through the native shell for the current platform: `cmd.exe /c` on Windows and the current POSIX shell on macOS/Linux.
 
 ## Useful Links

@@ -60,6 +60,8 @@ const APP_SUPPORT_DIRECTORY_NAME = "loopndroll";
 export const MANAGED_HOOK_MARKER = "--managed-by loopndroll";
 export const MANAGED_HOOK_SCRIPT_MARKER = "managed-by loopndroll";
 export const HOOK_DEBUG_LOG_ENV_NAME = "LOOPNDROLL_ENABLE_HOOK_DEBUG_LOGS";
+export const HOOK_RELAY_BYPASS_ENV_NAME = "LOOPNDROLL_BYPASS_HOOK_RELAY";
+export const LOOPNDROLL_HOOK_RELAY_PORT = 46331;
 export const REDACTED_DEBUG_VALUE = "[redacted]";
 export const HOOK_DEBUG_REDACTED_KEYS = [
   "authorization",
@@ -88,7 +90,7 @@ export const TELEGRAM_NOTIFICATION_FOOTER =
   "Reply to this message in Telegram to continue this Codex chat.";
 export const TELEGRAM_ALLOWED_UPDATES = ["message", "channel_post", "my_chat_member", "chat_member"];
 
-function getAppDataRootPath() {
+function getLegacyAppDataRootPath() {
   if (process.platform === "darwin") {
     return join(homedir(), "Library", "Application Support");
   }
@@ -100,10 +102,14 @@ function getAppDataRootPath() {
   return process.env["XDG_DATA_HOME"] || join(homedir(), ".local", "share");
 }
 
+export function getLegacyLoopndrollAppDirectoryPath() {
+  return join(getLegacyAppDataRootPath(), APP_SUPPORT_DIRECTORY_NAME);
+}
+
 export function getLoopndrollPaths(): LoopndrollPaths {
-  const appDirectoryPath = join(getAppDataRootPath(), APP_SUPPORT_DIRECTORY_NAME);
-  const managedHookScriptPath = join(appDirectoryPath, "bin", "loopndroll-hook.mjs");
   const codexDirectoryPath = join(homedir(), ".codex");
+  const appDirectoryPath = join(codexDirectoryPath, APP_SUPPORT_DIRECTORY_NAME);
+  const managedHookScriptPath = join(appDirectoryPath, "bin", "loopndroll-hook.mjs");
 
   return {
     appDirectoryPath,

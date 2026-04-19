@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import {
   ApplicationMenu,
   BrowserWindow,
@@ -37,6 +38,11 @@ import {
   updateCompletionCheck,
   updateLoopNotification,
 } from "./loopndroll";
+import {
+  HOOK_RELAY_BYPASS_ENV_NAME,
+  LOOPNDROLL_HOOK_RELAY_PORT,
+  getLoopndrollPaths,
+} from "./loopndroll-core";
 
 const DEV_SERVER_PORT = 5173;
 const DEV_SERVER_URL = `http://127.0.0.1:${DEV_SERVER_PORT}`;
@@ -465,6 +471,54 @@ function installApplicationMenu() {
   ]);
 }
 
+function startLoopndrollHookRelayServer() {
+  const paths = getLoopndrollPaths();
+
+  return Bun.serve({
+    hostname: "127.0.0.1",
+    port: LOOPNDROLL_HOOK_RELAY_PORT,
+    async fetch(request) {
+      const url = new URL(request.url);
+      if (request.method !== "POST" || url.pathname !== "/hook") {
+        return new Response("Not found.", { status: 404 });
+      }
+
+      const payloadText = await request.text();
+      const result = spawnSync(process.execPath, [paths.managedHookScriptPath], {
+        encoding: "utf8",
+        input: payloadText,
+        maxBuffer: 10 * 1024 * 1024,
+        env: {
+          ...process.env,
+          [HOOK_RELAY_BYPASS_ENV_NAME]: "1",
+        },
+      });
+
+      if (result.error) {
+        return new Response(
+          result.error instanceof Error ? result.error.message : String(result.error),
+          { status: 500 },
+        );
+      }
+
+      if (result.status !== 0) {
+        const errorMessage =
+          result.stderr?.trim() ||
+          result.stdout?.trim() ||
+          `Loopndroll hook relay exited with status ${result.status}.`;
+        return new Response(errorMessage, { status: 500 });
+      }
+
+      return new Response(result.stdout ?? "", {
+        status: 200,
+        headers: {
+          "content-type": "application/json; charset=utf-8",
+        },
+      });
+    },
+  });
+}
+
 function getWindowState(): WindowControlsState {
   return {
     isFullScreen: mainWindow.isFullScreen(),
@@ -618,6 +672,7 @@ const windowRpc = createWindowRpc();
 
 installApplicationMenu();
 startLoopndrollTelegramBridge();
+startLoopndrollHookRelayServer();
 void initializeUpdater();
 
 mainWindow = new BrowserWindow({
