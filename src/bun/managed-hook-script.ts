@@ -154,5 +154,14 @@ export function buildManagedHookScript(paths: LoopndrollPaths) {
 }) {`,
       `function getTelegramChatDisplayName(chat) {`,
     )
+    .replace(
+      "const input = JSON.parse(await Bun.stdin.text());",
+      `const stdinText = await Bun.stdin.text();
+  const normalizedInput = stdinText.trim();
+  if (normalizedInput.length === 0) {
+    return;
+  }
+  const input = JSON.parse(normalizedInput);`,
+    )
     .replace("(part): part is string =>", "(part) =>");
 }

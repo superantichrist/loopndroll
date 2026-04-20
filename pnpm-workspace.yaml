@@ -1,2 +1,5 @@
 allowBuilds:
+  better-sqlite3: true
   bun: false
+  esbuild: true
+  msw: true

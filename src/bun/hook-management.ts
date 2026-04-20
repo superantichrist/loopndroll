@@ -1,7 +1,6 @@
 import { spawn } from "node:child_process";
 import { chmod, copyFile, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { gzipSync } from "node:zlib";
 import { eq } from "drizzle-orm";
 import type { LoopndrollSnapshot } from "../shared/app-rpc";
 import { getLoopndrollDatabase } from "./db/client";
@@ -103,48 +102,30 @@ function quoteCommandPath(path: string) {
   return `'${path.replaceAll("'", `'\\''`)}'`;
 }
 
-function chunkText(text: string, size: number) {
-  const chunks: string[] = [];
-
-  for (let index = 0; index < text.length; index += size) {
-    chunks.push(text.slice(index, index + size));
-  }
-
-  return chunks;
-}
-
 function buildWindowsManagedHookLauncher(paths: LoopndrollPaths) {
   const bunExecutablePath = process.execPath.replaceAll('"', '""');
-  const embeddedScriptChunks = chunkText(
-    gzipSync(buildManagedHookScript(paths)).toString("base64"),
-    3_500,
-  );
-  const embeddedScriptLoader = [
-    "import { gunzipSync } from 'node:zlib';",
-    "const encoded = Object.entries(process.env)",
-    "  .filter(([key]) => key.startsWith('LOOPNDROLL_HOOK_SCRIPT_B64_'))",
-    "  .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey, undefined, { numeric: true }))",
-    "  .map(([, value]) => value ?? '')",
-    "  .join('');",
-    "const source = gunzipSync(Buffer.from(encoded, 'base64'))",
-    "  .toString('utf8')",
-    "  .replace(/^#![^\\n]*\\n/, '');",
-    "await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));",
-  ].join(" ");
+  const managedHookScriptPath = paths.managedHookScriptPath.replaceAll('"', '""');
 
   return [
     "@echo off",
     "setlocal",
-    ...embeddedScriptChunks.map(
-      (chunk, index) => `set "LOOPNDROLL_HOOK_SCRIPT_B64_${index}=${chunk}"`,
-    ),
-    `"${bunExecutablePath}" -e "${embeddedScriptLoader}" %*`,
+    `"${bunExecutablePath}" "${managedHookScriptPath}" %*`,
     "",
   ].join("\r\n");
 }
 
 function isManagedHookCommand(command: string | undefined) {
   return typeof command === "string" && command.includes(MANAGED_HOOK_MARKER);
+}
+
+function buildManagedHookCommand(paths: LoopndrollPaths) {
+  const baseCommand = `${quoteCommandPath(paths.managedHookPath)} --hook ${MANAGED_HOOK_MARKER}`;
+
+  if (process.platform === "win32") {
+    return `cmd.exe /d /s /c "${baseCommand.replaceAll('"', '""')}"`;
+  }
+
+  return baseCommand;
 }
 
 function removeManagedHooks(hooksDocument: HooksDocument) {
@@ -177,7 +158,7 @@ function upsertManagedHooks(paths: LoopndrollPaths, hooksDocument: HooksDocument
 
   removeManagedHooks(hooksDocument);
 
-  const command = `${quoteCommandPath(paths.managedHookPath)} --hook ${MANAGED_HOOK_MARKER}`;
+  const command = buildManagedHookCommand(paths);
 
   hooksDocument.hooks.SessionStart = [
     ...(hooksDocument.hooks.SessionStart ?? []),
